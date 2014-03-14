@@ -5,10 +5,22 @@ require 'json'
 get '*' do
   @real_cc = env.fetch('HTTP_CC')
   path = params[:splat].first
-  log "Received request for #{path}"
+  log_banner
+  log "Received request for #{path}?inline-relations-depth=#{ir_depth}"
   base_json = JSON.parse(get_url(@real_cc, path, env["HTTP_AUTHORIZATION"]))
-  relationships_to_omit = [resource_name(path), "#{resource_name(path)}s", "events", "app_events", "dashboard", "info"]
+  relationships_to_omit = [
+    resource_name(path),
+    "#{resource_name(path)}s",
+    "events",
+    "app_events",
+    "dashboard",
+    "info",
+    "documentation",
+    "audited_spaces",
+    "managed_spaces",
+  ]
   res = expand(base_json, ir_depth, relationships_to_omit)
+  log_banner
   body JSON.pretty_generate(res)
 end
 
@@ -20,6 +32,7 @@ def get_url(host, path, token)
   res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
     http.request(req)
   end
+  raise "Bad response: #{res.code}" unless res.code == '200'
   res.body
 end
 
@@ -38,7 +51,6 @@ def expand(base_json, depth, relationships_to_omit)
 end
 
 def expand_resource(base_json, depth, relationships_to_omit)
-  log "base_json = #{base_json}"
   has_many_relationships = base_json.fetch('entity').keys.grep(/s_url/).map {|s| s.gsub(/_url$/, '')}
   has_one_relationships = base_json.fetch('entity').keys.grep(/[^s]_url/).map {|s| s.gsub(/_url$/, '')}
   has_many_relationships.each do |relationship|
@@ -72,17 +84,12 @@ def resource_name(path)
   resource.gsub(/s$/, '') # de-pluralize
 end
 
-def log(msg)
-  puts "="*80
-  puts msg
+def log_banner
   puts "="*80
 end
 
-def build_path(path, params)
-  raise 'No path' unless path
-  "#{path}?inline-relations-depth=#{ir_depth}".tap do |p|
-    log "path = #{p.inspect}"
-  end
+def log(msg)
+  puts msg
 end
 
 def ir_depth

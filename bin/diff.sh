@@ -2,27 +2,29 @@
 
 set -e
 
-BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-TOKEN=`$BIN_DIR/token.sh`
-cc_url=$(bin/cf_api.sh)
-PROXIED_RESPONSE=$(curl -H "Authorization:$TOKEN" -H "CC:$cc_url" http://localhost:4567$1 2>/dev/null)
-UNPROXIED_RESPONSE=$(curl -H "Authorization:$TOKEN" ${cc_url}$1 2>/dev/null)
-
 mkdir -p tmp
-echo $PROXIED_RESPONSE | $BIN_DIR/prettify_hash.rb > tmp/proxied.json
-echo $UNPROXIED_RESPONSE | $BIN_DIR/prettify_hash.rb > tmp/unproxied.json
+PROXIED_RESPONSE=$(bin/curl_proxy.sh $1 2>/dev/null)
+echo $PROXIED_RESPONSE   | bin/prettify_hash.rb > tmp/proxied.json
 
-diff -y tmp/proxied.json tmp/unproxied.json
+UNPROXIED_RESPONSE=$(bin/curl_cc.sh $1 2>/dev/null)
+echo $UNPROXIED_RESPONSE | bin/prettify_hash.rb > tmp/unproxied.json
 
-green="\033[32m"
-red="\033[31m"
-neutral="\033[0m"
+green="\e[32m"
+red="\e[31m"
+reset="\e[0m"
 
-if [ $? -eq 0 ]; then
-  printf "${green}EXACT MATCH${neutral}\n"
+set +e
+
+if (diff tmp/proxied.json tmp/unproxied.json 2>&1 >/dev/null); then
+  printf "${green}EXACT MATCH${reset}\n"
   exit 0
 else
-  printf "${red}DIFFERENCES FOUND${neutral}\n"
+  printf "${red}DIFFERENCES FOUND:${reset}\n"
+  if (which colordiff); then
+    colordiff -y tmp/proxied.json tmp/unproxied.json
+  else
+    diff -y tmp/proxied.json tmp/unproxied.json
+  fi
+  printf "\n"
   exit 1
 fi
