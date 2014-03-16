@@ -3,11 +3,11 @@
 set -e
 
 mkdir -p tmp
-PROXIED_RESPONSE=$(bin/curl_proxy.sh $1 2>/dev/null)
-echo $PROXIED_RESPONSE   | bin/prettify_hash.rb > tmp/proxied.json
+PROXIED_RESPONSE=$(bin/curl_proxy $1 2>/dev/null)
+echo $PROXIED_RESPONSE   | bin/prettify_hash > tmp/proxied.json
 
-UNPROXIED_RESPONSE=$(bin/curl_cc.sh $1 2>/dev/null)
-echo $UNPROXIED_RESPONSE | bin/prettify_hash.rb > tmp/unproxied.json
+UNPROXIED_RESPONSE=$(bin/curl_cc $1 2>/dev/null)
+echo $UNPROXIED_RESPONSE | bin/prettify_hash > tmp/unproxied.json
 
 green="\e[32m"
 red="\e[31m"
